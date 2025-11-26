@@ -1,6 +1,3 @@
-# placar-facil-nuvem
-Repositório da aplicação Placar Fácil que utiliza serviços de nuvem.
-
 # Placar Fácil — MVP (AWS: API Gateway + Lambda + S3 + CloudWatch)
 
 **Visão geral:** Placar de partidas rápido, com times configuráveis, sets, pontos por set e vencedor automático (maioria de sets). 
