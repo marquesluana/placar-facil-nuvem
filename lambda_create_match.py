@@ -2,7 +2,6 @@ import os
 import json
 import uuid
 import time
-from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
 
@@ -18,18 +17,28 @@ def _now_ts():
     return int(time.time())
 
 def s3_key_for_match(match_id):
-    return f"matches/match-{match_id}.json"
+    clean_id = match_id
+    if not clean_id.startswith("match-"):
+        clean_id = "match-" + clean_id
+    return f"matches/{clean_id}.json"
 
 def lambda_handler(event, context):
-    # expected JSON body
     try:
         body = json.loads(event.get('body', '{}'))
     except Exception:
         return {"statusCode":400, "body": json.dumps({"error":"invalid json"})}
 
-    name = (body.get('name') or "").strip()
-    teamA = (body.get('teamA') or "Time A").strip()
-    teamB = (body.get('teamB') or "Time B").strip()
+    raw_name = body.get('name')
+    raw_teamA = body.get('teamA')
+    raw_teamB = body.get('teamB')
+
+    teamA = (raw_teamA.strip() if raw_teamA and str(raw_teamA).strip() else "Time A")
+    teamB = (raw_teamB.strip() if raw_teamB and str(raw_teamB).strip() else "Time B")
+    name = (raw_name.strip() if raw_name and str(raw_name).strip() else None)
+
+    if not name:
+        name = f"{teamA} x {teamB}"
+
     try:
         sets = int(body.get('sets', 3))
         max_points = int(body.get('maxPoints', 25))
@@ -43,10 +52,9 @@ def lambda_handler(event, context):
     match_id = str(uuid.uuid4())[:8]
     created_at = _now_ts()
 
-    # initial structure
     match = {
         "id": f"match-{match_id}",
-        "name": name or f"{teamA} x {teamB}",
+        "name": name,
         "teamA": teamA,
         "teamB": teamB,
         "setsTotal": sets,
@@ -60,16 +68,18 @@ def lambda_handler(event, context):
         "createdAt": created_at
     }
 
-    # empty sets array initially; sets are recorded as finished sets are added (or keep structure if you prefer)
-    # Save to S3
     key = s3_key_for_match(match["id"])
     try:
-        s3.put_object(Bucket=BUCKET, Key=key, Body=json.dumps(match, ensure_ascii=False, indent=2).encode('utf-8'))
+        s3.put_object(
+            Bucket=BUCKET,
+            Key=key,
+            Body=json.dumps(match, ensure_ascii=False, indent=2).encode('utf-8')
+        )
     except ClientError as e:
         return {"statusCode":500, "body": json.dumps({"error":"s3 error", "detail": str(e)})}
 
     return {
         "statusCode": 201,
-        "headers": {"Content-Type":"application/json"},
+        "headers": {"Content-Type": "application/json"},
         "body": json.dumps({"match": match})
     }

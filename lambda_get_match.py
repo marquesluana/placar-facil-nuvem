@@ -12,11 +12,12 @@ if not BUCKET:
 s3 = boto3.client('s3', region_name=AWS_REGION)
 
 def s3_key_for_match(match_id):
-    # match_id expected like "match-xxxx"
-    return f"matches/{match_id}.json" if not match_id.startswith("match-") else f"matches/{match_id}.json"
+    clean_id = match_id
+    if not clean_id.startswith("match-"):
+        clean_id = "match-" + clean_id
+    return f"matches/{clean_id}.json"
 
 def lambda_handler(event, context):
-    # match id comes from path parameter: /match/{id}
     match_id = event.get('pathParameters', {}).get('id')
     if not match_id:
         return {"statusCode":400, "body": json.dumps({"error":"missing id"})}

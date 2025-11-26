@@ -14,7 +14,10 @@ if not BUCKET:
 s3 = boto3.client('s3', region_name=AWS_REGION)
 
 def s3_key_for_match(match_id):
-    return f"matches/{match_id}.json" if not match_id.startswith("match-") else f"matches/{match_id}.json"
+    clean_id = match_id
+    if not clean_id.startswith("match-"):
+        clean_id = "match-" + clean_id
+    return f"matches/{clean_id}.json"
 
 def read_match(key):
     resp = s3.get_object(Bucket=BUCKET, Key=key)
@@ -47,7 +50,7 @@ def lambda_handler(event, context):
         return {"statusCode":400, "body": json.dumps({"error":"invalid json"})}
 
     action = body.get('action', 'point')
-    team = body.get('team')  # 'A' or 'B'
+    team = body.get('team')  
     try:
         delta = int(body.get('delta', 1))
     except Exception:
@@ -62,23 +65,19 @@ def lambda_handler(event, context):
     if match.get('status') == 'finalizado':
         return {"statusCode":400, "body": json.dumps({"error":"match already finished", "match": match})}
 
-    # Ensure sets list exists
     if 'sets' not in match:
         match['sets'] = []
 
-    # If no current unfinished set, create one
     current_set = None
     for s in match['sets']:
         if not s.get('finished'):
             current_set = s
             break
     if current_set is None:
-        # create new set
         sidx = len(match['sets']) + 1
         current_set = {"set": sidx, "A": 0, "B": 0, "finished": False}
         match['sets'].append(current_set)
 
-    # action: point
     if action == 'point':
         if team not in ('A','B'):
             return {"statusCode":400, "body": json.dumps({"error":"team must be 'A' or 'B'"})}
@@ -87,15 +86,12 @@ def lambda_handler(event, context):
         else:
             current_set['B'] = max(0, current_set.get('B', 0) + delta)
 
-        # check set finish by maxPointsPerSet
         maxp = int(match.get('maxPointsPerSet', 0))
         if maxp > 0:
             if current_set['A'] >= maxp or current_set['B'] >= maxp:
                 current_set['finished'] = True
-                # count sets won
                 a_wins, b_wins = compute_sets_won(match)
                 needed = sets_needed_to_win(match.get('setsTotal', 1))
-                # if someone reached majority
                 if a_wins >= needed or b_wins >= needed:
                     match['status'] = 'finalizado'
                     if a_wins > b_wins:
@@ -105,15 +101,12 @@ def lambda_handler(event, context):
                     else:
                         match['vencedor'] = None
                 else:
-                    # else, leave status 'andamento' and next set will be created on next point
                     match['status'] = 'andamento'
-        # update setsA / setsB counters
         a_wins, b_wins = compute_sets_won(match)
         match['setsA'] = a_wins
         match['setsB'] = b_wins
 
     elif action == 'finish':
-        # finalize match manually
         a_wins, b_wins = compute_sets_won(match)
         match['setsA'] = a_wins
         match['setsB'] = b_wins
@@ -127,7 +120,6 @@ def lambda_handler(event, context):
     else:
         return {"statusCode":400, "body": json.dumps({"error":"unknown action"})}
 
-    # persist
     write_match(key, match)
 
     return {"statusCode":200, "headers":{"Content-Type":"application/json"}, "body": json.dumps({"match": match})}
