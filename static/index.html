@@ -94,24 +94,24 @@
   </main>
 
 <script>
-const API_BASE = "https://{API_BASE}"; // <<< SUBSTITUA pelo endpoint do API Gateway (ex: https://abc.execute-api.us-east-1.amazonaws.com/prod)
+const API_BASE = "https://https://ysy41qykyg.execute-api.sa-east-1.amazonaws.com/prod";
 
 function e(text){ if(!text) return ''; return text.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
 
 async function apiCreateMatch(payload){
-  const r = await fetch(`${API_BASE}/match`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+  const r = await fetch(`${API_BASE}/matches`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
   return r;
 }
 async function apiGetMatch(id){
-  const r = await fetch(`${API_BASE}/match/${encodeURIComponent(id)}`);
+  const r = await fetch(`${API_BASE}/matches/${encodeURIComponent(id)}`);
   return r;
 }
 async function apiListMatches(){
-  const r = await fetch(`${API_BASE}/match`); // list endpoint
+  const r = await fetch(`${API_BASE}/matches`); // list endpoint
   return r;
 }
 async function apiUpdateScore(id, payload){
-  const r = await fetch(`${API_BASE}/match/${encodeURIComponent(id)}/score`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+  const r = await fetch(`${API_BASE}/matches/${encodeURIComponent(id)}/score`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
   return r;
 }
 
